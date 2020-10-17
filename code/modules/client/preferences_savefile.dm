@@ -232,14 +232,15 @@ SAVEFILE UPDATING/VERSIONING - 'Simplified', or rather, more coder-friendly ~Car
 	path = "data/player_saves/[ckey[1]]/[ckey]/[filename]"
 	vr_path = "data/player_saves/[ckey[1]]/[ckey]/vore"
 
-/datum/preferences/proc/load_preferences()
+/datum/preferences/proc/load_preferences(bypass_cooldown = FALSE)
 	if(!path)
 		return FALSE
-	if(world.time < loadprefcooldown)
-		if(istype(parent))
-			to_chat(parent, "<span class='warning'>You're attempting to load your preferences a little too fast. Wait half a second, then try again.</span>")
-		return FALSE
-	loadprefcooldown = world.time + PREF_SAVELOAD_COOLDOWN
+	if(!bypass_cooldown)
+		if(world.time < loadprefcooldown)
+			if(istype(parent))
+				to_chat(parent, "<span class='warning'>You're attempting to load your preferences a little too fast. Wait half a second, then try again.</span>")
+			return FALSE
+		loadprefcooldown = world.time + PREF_SAVELOAD_COOLDOWN
 	if(!fexists(path))
 		return FALSE
 
@@ -324,8 +325,6 @@ SAVEFILE UPDATING/VERSIONING - 'Simplified', or rather, more coder-friendly ~Car
 		fcopy(S, bacpath) //byond helpfully lets you use a savefile for the first arg.
 		update_preferences(needs_update, S)		//needs_update = savefile_version if we need an update (positive integer)
 
-
-
 	//Sanitize
 	ooccolor		= sanitize_ooccolor(sanitize_hexcolor(ooccolor, 6, 1, initial(ooccolor)))
 	lastchangelog	= sanitize_text(lastchangelog, initial(lastchangelog))
@@ -381,11 +380,11 @@ SAVEFILE UPDATING/VERSIONING - 'Simplified', or rather, more coder-friendly ~Car
 				continue
 			max_save_slots = max(max_save_slots, slotnum) //so we can still update byond member slots after they lose memeber status
 			default_slot = slotnum
-			if (load_character()) // this updtates char slots
-				save_character()
+			if (load_character(null, TRUE)) // this updtates char slots
+				save_character(TRUE)
 		default_slot = old_default_slot
 		max_save_slots = old_max_save_slots
-		save_preferences()
+		save_preferences(TRUE)
 
 	return TRUE
 
@@ -407,14 +406,15 @@ SAVEFILE UPDATING/VERSIONING - 'Simplified', or rather, more coder-friendly ~Car
 		if(!GLOB.keybindings_by_name[bindname])
 			modless_key_bindings -= key
 
-/datum/preferences/proc/save_preferences()
+/datum/preferences/proc/save_preferences(bypass_cooldown = FALSE)
 	if(!path)
 		return 0
-	if(world.time < saveprefcooldown)
-		if(istype(parent))
-			to_chat(parent, "<span class='warning'>You're attempting to save your preferences a little too fast. Wait half a second, then try again.</span>")
-		return 0
-	saveprefcooldown = world.time + PREF_SAVELOAD_COOLDOWN
+	if(!bypass_cooldown)
+		if(world.time < saveprefcooldown)
+			if(istype(parent))
+				to_chat(parent, "<span class='warning'>You're attempting to save your preferences a little too fast. Wait half a second, then try again.</span>")
+			return 0
+		saveprefcooldown = world.time + PREF_SAVELOAD_COOLDOWN
 	var/savefile/S = new /savefile(path)
 	if(!S)
 		return 0
@@ -475,14 +475,15 @@ SAVEFILE UPDATING/VERSIONING - 'Simplified', or rather, more coder-friendly ~Car
 
 	return 1
 
-/datum/preferences/proc/load_character(slot)
+/datum/preferences/proc/load_character(slot, bypass_cooldown = FALSE)
 	if(!path)
 		return FALSE
-	if(world.time < loadcharcooldown) //This is before the check to see if the filepath exists to ensure that BYOND can't get hung up on read attempts when the hard drive is a little slow
-		if(istype(parent))
-			to_chat(parent, "<span class='warning'>You're attempting to load your character a little too fast. Wait half a second, then try again.</span>")
-		return "SLOW THE FUCK DOWN" //the reason this isn't null is to make sure that people don't have their character slots overridden by random chars if they accidentally double-click a slot
-	loadcharcooldown = world.time + PREF_SAVELOAD_COOLDOWN
+	if(!bypass_cooldown)
+		if(world.time < loadcharcooldown) //This is before the check to see if the filepath exists to ensure that BYOND can't get hung up on read attempts when the hard drive is a little slow
+			if(istype(parent))
+				to_chat(parent, "<span class='warning'>You're attempting to load your character a little too fast. Wait half a second, then try again.</span>")
+			return "SLOW THE FUCK DOWN" //the reason this isn't null is to make sure that people don't have their character slots overridden by random chars if they accidentally double-click a slot
+		loadcharcooldown = world.time + PREF_SAVELOAD_COOLDOWN
 	if(!fexists(path))
 		return FALSE
 	var/savefile/S = new /savefile(path)
@@ -563,6 +564,9 @@ SAVEFILE UPDATING/VERSIONING - 'Simplified', or rather, more coder-friendly ~Car
 	S["feature_insect_wings"]			>> features["insect_wings"]
 	S["feature_insect_fluff"]			>> features["insect_fluff"]
 	S["feature_insect_markings"]		>> features["insect_markings"]
+	S["feature_arachnid_legs"]			>> features["arachnid_legs"]
+	S["feature_arachnid_spinneret"]		>> features["arachnid_spinneret"]
+	S["feature_arachnid_mandibles"]		>> features["arachnid_mandibles"]
 	S["feature_horns_color"]			>> features["horns_color"]
 	S["feature_wings_color"]			>> features["wings_color"]
 	S["persistent_scars"] 				>> persistent_scars
@@ -747,6 +751,9 @@ SAVEFILE UPDATING/VERSIONING - 'Simplified', or rather, more coder-friendly ~Car
 	features["insect_fluff"]		= sanitize_inlist(features["insect_fluff"], GLOB.insect_fluffs_list)
 	features["insect_markings"] 	= sanitize_inlist(features["insect_markings"], GLOB.insect_markings_list, "None")
 	features["insect_wings"] 		= sanitize_inlist(features["insect_wings"], GLOB.insect_wings_list)
+	features["arachnid_legs"] 		= sanitize_inlist(features["arachnid_legs"], GLOB.arachnid_legs_list, "Plain")
+	features["arachnid_spinneret"] 	= sanitize_inlist(features["arachnid_spinneret"], GLOB.arachnid_spinneret_list, "Plain")
+	features["arachnid_mandibles"]	= sanitize_inlist(features["arachnid_mandibles"], GLOB.arachnid_mandibles_list, "Plain")
 
 	var/static/size_min
 	if(!size_min)
@@ -819,14 +826,15 @@ SAVEFILE UPDATING/VERSIONING - 'Simplified', or rather, more coder-friendly ~Car
 
 	return 1
 
-/datum/preferences/proc/save_character()
+/datum/preferences/proc/save_character(bypass_cooldown = FALSE)
 	if(!path)
 		return 0
-	if(world.time < savecharcooldown)
-		if(istype(parent))
-			to_chat(parent, "<span class='warning'>You're attempting to save your character a little too fast. Wait half a second, then try again.</span>")
-		return 0
-	savecharcooldown = world.time + PREF_SAVELOAD_COOLDOWN
+	if(!bypass_cooldown)
+		if(world.time < savecharcooldown)
+			if(istype(parent))
+				to_chat(parent, "<span class='warning'>You're attempting to save your character a little too fast. Wait half a second, then try again.</span>")
+			return 0
+		savecharcooldown = world.time + PREF_SAVELOAD_COOLDOWN
 	var/savefile/S = new /savefile(path)
 	if(!S)
 		return 0
@@ -886,6 +894,9 @@ SAVEFILE UPDATING/VERSIONING - 'Simplified', or rather, more coder-friendly ~Car
 	WRITE_FILE(S["feature_insect_wings"]			, features["insect_wings"])
 	WRITE_FILE(S["feature_insect_fluff"]			, features["insect_fluff"])
 	WRITE_FILE(S["feature_insect_markings"]			, features["insect_markings"])
+	WRITE_FILE(S["feature_arachnid_legs"]			, features["arachnid_legs"])
+	WRITE_FILE(S["feature_arachnid_spinneret"]		, features["arachnid_spinneret"])
+	WRITE_FILE(S["feature_arachnid_mandibles"]		, features["arachnid_mandibles"])
 	WRITE_FILE(S["feature_meat"]					, features["meat_type"])
 
 	WRITE_FILE(S["feature_has_cock"], features["has_cock"])
